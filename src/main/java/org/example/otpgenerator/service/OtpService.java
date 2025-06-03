@@ -17,10 +17,7 @@ public class OtpService {
 
     public Otp.Response sendOtp(String email) {
         try {
-//            if (tokenStorogeService.getToken(email) != null) {
-//                tokenStorogeService.removeToken(email);
-//                log.info("Removed existing otp for {}", email);
-//            }
+
             String otp = tokenService.generateOtp();
             String otpHash = tokenService.generateOtpHash(otp);
             log.info("Generated otp for {}", email);
