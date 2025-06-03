@@ -20,6 +20,7 @@ public class TokenStorogeService {
         log.info("token stored for email: {}", email);
     }
 
+    //delete if not needed fyi
     public String getToken(String email) {
         String token = tokenStorage.opsForValue().get(email);
         log.info("token for the email: {}", email);
@@ -33,9 +34,5 @@ public class TokenStorogeService {
        }else{
            log.warn("could not remove the token" , email);
        }
-    }
-
-    public boolean hasToken(String email){
-        return Boolean.TRUE.equals(tokenStorage.hasKey(email));
     }
 }

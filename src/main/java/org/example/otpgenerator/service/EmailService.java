@@ -27,7 +27,7 @@ public class EmailService {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message);
 
-            helper.setFrom("no-reply@yourdomain.com");
+            helper.setFrom("SALAM!");
             helper.setTo(toEmail);
             helper.setSubject("Your Verification Code");
             helper.setText(String.format(
