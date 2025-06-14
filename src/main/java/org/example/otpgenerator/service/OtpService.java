@@ -1,50 +1,94 @@
 package org.example.otpgenerator.service;
 
-import lombok.AllArgsConstructor;
+
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.example.otpgenerator.entity.Otp;
+import org.example.otpgenerator.Dto.ResponseDto;
+import org.example.otpgenerator.entity.Card;
+import org.example.otpgenerator.entity.Status;
+import org.example.otpgenerator.repo.UserRepository;
 import org.springframework.stereotype.Service;
+
+import java.util.concurrent.CompletableFuture;
+
 
 
 @Slf4j
 @Service
-@AllArgsConstructor
+@RequiredArgsConstructor
 public class OtpService {
 
-    private TokenService tokenService;
-    private EmailService emailService;
-    private TokenStorogeService tokenStorogeService;
+    private final TokenService tokenService;
+    private final EmailService emailService;
+    private final TokenStorageService tokenStorageService;
+    private final UserRepository userRepository;
 
-    public Otp.Response sendOtp(String email) {
+
+
+    public ResponseDto sendOtp(String email) {
         try {
+            String otp = generateAndStoreOtp(email);
 
-            String otp = tokenService.generateOtp();
-            String otpHash = tokenService.generateOtpHash(otp);
-            log.info("Generated otp for {}", email);
-
-            tokenStorogeService.storeToken(email, otpHash);
-
-            try {
-                boolean emailSent = emailService.sendEmail(email, otp);
-
-                if (!emailSent) {
-                    log.error("Email sending failed for {}", email);
-                    tokenStorogeService.removeToken(email);
-                    return new Otp.Response("Email service unavailable", email);
-                }
-
-                return new Otp.Response("Otp sent", email);
-
-            } catch (Exception emailException) {
-                log.error("Failed to send email to {}: {}", email, emailException.getMessage());
-                tokenStorogeService.removeToken(email);
-                return new Otp.Response("Email service unavailable", email);
+            if(!sendOtpEmail(email , otp)){
+                tokenStorageService.removeToken(email);
+                log.error("could not delete nor send email for email {} " , email);
+                return new ResponseDto("Failed to sent email" , email);
             }
-
-        } catch (RuntimeException e) {
-            log.error("could not send otp", e.getMessage());
-
+            saveUserToRepo(email);
+            return new ResponseDto("send otp and saved the card" , email);
+        }catch (Exception e) {
+            log.error("Error sending OTP to {}:", email);
+            return new ResponseDto("internal error", email);
         }
-        return new Otp.Response("Failed to generate otp", "");
+    }
+
+    private boolean sendOtpEmail(String email, String otp) {
+        try{
+            CompletableFuture<Boolean> emailSent = emailService.sendEmail(email, otp);
+
+                if (!emailSent.get()) {
+                    log.error("Email sending failed for {}", email);
+                }
+                return emailSent.get();
+        }catch (Exception e) {
+            log.error("Exception sending email to {}: ", email);
+            return false;
+        }
+    }
+
+    private String generateAndStoreOtp(String email) {
+        try {
+            String otp = tokenService.generateOtp();
+            String hashesOtp = tokenService.generateOtpHash(otp);
+            log.info("generated otp and hashed otp");
+
+            tokenStorageService.storeToken(email, hashesOtp);
+            log.info("stored otp in redis with key {} ", email);
+
+            return otp;
+        } catch (RuntimeException e) {
+            log.info("could not generate token");
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void saveUserToRepo(String email) {
+        if (userRepository.existsCardByEmail(email).isPresent()) {
+            log.info("User with email {} already exists", email);
+            return;
+        }
+
+        try {
+            Card newCard = Card.builder()
+                    .email(email)
+                    .status(Status.INACTIVE.toString())
+                    .build();
+
+            userRepository.save(newCard);
+            log.info("saved user for the email {} ", email);
+        } catch (RuntimeException e) {
+            log.error("could not save card for email {} ", email);
+            throw new RuntimeException();
+        }
     }
 }

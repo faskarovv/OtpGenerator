@@ -1,10 +1,8 @@
 package org.example.otpgenerator.service;
 
 import jakarta.mail.internet.MimeMessage;
-import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.mail.MailAuthenticationException;
-import org.springframework.mail.MailSendException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
@@ -15,19 +13,20 @@ import java.util.concurrent.CompletableFuture;
 
 @Slf4j
 @Service
-@AllArgsConstructor
+@RequiredArgsConstructor
 public class EmailService {
-    private JavaMailSender mailSender;
 
+    private final JavaMailSender mailSender;
 
-    public Boolean sendEmail(String toEmail, String otp) {
+    @Async
+    public CompletableFuture<Boolean> sendEmail(String toEmail, String otp) {
         try {
             log.info("Attempting to send email to: {}", toEmail);
 
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message);
 
-            helper.setFrom("SALAM!");
+            helper.setFrom("fasgerov06@gmail.com");
             helper.setTo(toEmail);
             helper.setSubject("Your Verification Code");
             helper.setText(String.format(
@@ -35,13 +34,13 @@ public class EmailService {
                     otp
             ), true);
 
+            log.info("About to send email");
             mailSender.send(message);
             log.info("Email successfully sent to: {}", toEmail);
-            return true;
+            return CompletableFuture.completedFuture(true);
         } catch (Exception e) {
             log.error("email service error", e);
-            return false;
+            return CompletableFuture.completedFuture(false);
         }
     }
 }
-

@@ -1,0 +1,6 @@
+FROM openjdk:17-jdk-slim
+ARG JAR_FILE=target/*.jar
+COPY target/OtpGenerator-0.0.1-SNAPSHOT.jar /app/app.jar
+WORKDIR /app
+EXPOSE 8081
+ENTRYPOINT ["java", "-jar", "app.jar"]
